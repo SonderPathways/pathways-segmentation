@@ -52,17 +52,18 @@ sort(unique(df_shp$NAME_1))
 data_state_var <- config::get("data_state_var")
 IR <- IR %>%
   dplyr::mutate(region = as.character(eval(parse(text = data_state_var))),
-                region = stringr::str_to_title(trimws(gsub(pattern = "rurale|urbain|rural|urban|nc|ne|nw|,","", state))),
-                region = case_when(state == "Fct" ~ "Federal Capital Territory",
+                region = stringr::str_to_title(trimws(gsub(pattern = "rurale|urbain|rural|urban|nc|ne|nw|-","", region))),
+                region = case_when(region == "Dar Es Salaam" ~ "Dar es Salaam",
                                   TRUE ~ region))
+sort(unique(IR$region))
+
 
 # check that shape file and IR file now have the same admin 1 names
 
 
 if (!setequal(IR$region, df_shp$NAME_1)) {
-  stop("Names in IR file and shapefile don't match. Must fix before proceeding")
+  stop("Names in IR file and shapefile match. Must fix before proceeding")
 }
-
 
 
 
