@@ -329,11 +329,29 @@ fun_gen_lca_diagnostic_output <- function(stratum=NULL, data_path=NULL, nreps=NU
   png_path = paste0(plot_path, "nreps", nreps, "/", stratum, "_lca_sankey.png")
 
   saveNetwork(sankey, html_path)
-  webshot2::webshot(html_path, png_path)
 
-  img <- image_read(png_path)
-  plot(img)
-  # title(sankey_title)
+  # PNG SNAPSHOT OF THE SANKEY FOR THE PDF (needs headless Chrome via webshot2/chromote).
+  # If Chrome is slow or unavailable, skip the image instead of stopping the script;
+  # the interactive HTML version is always saved above.
+  options(chromote.timeout = 60)   # default is 10 seconds
+  shot_ok <- tryCatch({
+    webshot2::webshot(html_path, png_path, delay = 1)
+    file.exists(png_path)
+  }, error = function(e){
+    message(stratum, ": could not save Sankey PNG (", conditionMessage(e), "). ",
+            "Skipping the image in the PDF - open ", html_path, " instead.")
+    FALSE
+  })
+
+  if (shot_ok){
+    img <- image_read(png_path)
+    plot(img)
+    # title(sankey_title)
+  } else {
+    plot(0:10, type = "n", xaxt = "n", yaxt = "n", bty = "n", xlab = "", ylab = "")
+    text(5, 6, "Sankey image could not be generated", cex = 1.5)
+    text(5, 4, paste0("Open: ", basename(html_path)), cex = 1)
+  }
 
   if (file.exists(png_path)){
     file.remove(png_path)

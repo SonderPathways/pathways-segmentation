@@ -84,8 +84,10 @@ if (run_in_parallel == TRUE){
   progress <- function(n) utils::setTxtProgressBar(pb, n)
   opts <- list(progress = progress)
 
+
   parallel::clusterEvalQ(cl, {
     pacman::p_load(dplyr, forcats, reshape2, ggplot2, survey, gridExtra, stringr, config, data.table, broom)
+    options(survey.lonely.psu = "adjust")
     TRUE
   })
 
@@ -148,13 +150,13 @@ if (run_in_parallel == TRUE){
 # RUN EDA FOR A SINGLE VULNERABILITY VARIABLE - THIS WILL SKIP OVER WHEN RUNNING THE ENTIRE SCRIPT
 
 
-if (FALSE){
-
-  # DEFINE VULNERABILITY VARIABLE AS "M"
-  m = "wealth.index.ur.cat"
-  output <- fun_gen_exploratory_data_analysis(df = outcomes_vulnerability, outcomes.list = outcomes.list, measure = m, strata=strata, plot_path = exploratory_plots)
-
-}
+# if (FALSE){
+#
+#   # DEFINE VULNERABILITY VARIABLE AS "M"
+#   m = "wealth.index.ur"
+#   output <- fun_gen_exploratory_data_analysis(df = outcomes_vulnerability, outcomes.list = outcomes.list, measure = m, strata=strata, plot_path = exploratory_plots)
+#
+# }
 
 
 ###################################

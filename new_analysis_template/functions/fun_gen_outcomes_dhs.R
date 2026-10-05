@@ -65,7 +65,9 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
 
 
   # ANC 8+
-  IR <- IR %>% dplyr::mutate(anc.8plus.last = ifelse(anc.total >= 8, 0, 1))
+  # IR <- IR %>% dplyr::mutate(anc.8plus.last = ifelse(anc.total >= 8, 0, 1))
+  IR <- IR %>% dplyr::mutate(anc.less8.last = ifelse(anc.total >= 8, 0, 1))
+  # SM: changed this so that var name matches 4+ anc version
 
   ## ANC.1STVISIT ----
   # Timing of 1st antenatal check (months)
@@ -81,12 +83,22 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
 
   ## UNASSISTED.DEL ----
   # Medically unassisted delivery Y/N
+  # SM: From Tanzania 2022 DHS Report - Births delivered with the assistance of doctors/assistant medical officers
+  # (AMOs), clinical officers, assistant clinical officers, nurses/midwives, assistant
+  # nurses, and maternal and child health (MCH) aides.
+  # m3a      "Assistance: doctor/AMO"
+  # m3b      "Assistance: clinical officer"
+  # m3c      "Assistance: assistant clinical officer"
+  # m3d      "Assistance: nurse/midwife"
+  # m3e      "Assistance: assistant nurse"
+  # m3f      "Assistance: MCH aide"
+
   BR <- BR %>%
     mutate(
       unassisted.del = case_when(
-        is.na(m3a) & is.na(m3b) ~ NA_integer_,
-        m3a == 1 | m3b == 1 ~ 0,
-        TRUE ~ 1
+        if_all(m3a:m3f, is.na) ~ NA_integer_,
+        if_any(m3a:m3f, ~ .x == "yes") ~ 0L,
+        TRUE ~ 1L
       )
     )
 
@@ -236,7 +248,10 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
   ## NOFP.DIS.5YR ----
   # Last method discontinued in last 5 years
   IR <- IR %>%
-    dplyr::mutate(nofp.dis.5yr = case_when(v359 %in% c("pill", "iud", "injections", "male condom", "implants/norplant", "female condom", "emergency contraception", "other modern method", "lactational amenorrhea (lam)", "standard days method (sdm)") ~ 0,
+    dplyr::mutate(nofp.dis.5yr = case_when(v359 %in% c("pill", "iud", "injections", "male condom",
+                                                       "implants/norplant", "female condom", "emergency contraception",
+                                                       "other modern method", "lactational amenorrhea (lam)",
+                                                       "standard days method (sdm)") ~ 0,
                                            is.na(v359) ~ NA,
                                            TRUE ~ 1))
   IR$nofp.dis.5yr[is.na(IR$nofp.dis.5yr)] <- 1
@@ -253,26 +268,26 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
   ## HOME.BIRTH.LAST ----
   # Latest birth was home birth
   IR <- IR %>%
-    dplyr::mutate(home.birth.last = case_when(m15_1 %in% c("home", "parents' home", "her home", "other home") ~ 1,
+    dplyr::mutate(home.birth.last = case_when(m15_1 %in% c("home", "respondent's home", "other home") ~ 1,
                                               is.na(m15_1) ~ NA,
                                               TRUE ~ 0))
 
   ## HOME.BIRTH.EVER ----
   # Any birth was a home birth (births 2-5)
   IR <- IR %>%
-    dplyr::mutate(home.birth.2 = case_when(m15_2 %in% c("her home", "other home") ~ 1,
+    dplyr::mutate(home.birth.2 = case_when(m15_2 %in% c("home","respondent's home", "other home") ~ 1,
                                            is.na(m15_2) ~ NA,
                                            TRUE ~ 0))
   IR <- IR %>%
-    dplyr::mutate(home.birth.3 = case_when(m15_3 %in% c("her home", "other home") ~ 1,
+    dplyr::mutate(home.birth.3 = case_when(m15_3 %in% c("home","respondent's home", "other home") ~ 1,
                                            is.na(m15_3) ~ NA,
                                            TRUE ~ 0))
   IR <- IR %>%
-    dplyr::mutate(home.birth.4 = case_when(m15_4 %in% c("her home", "other home") ~ 1,
+    dplyr::mutate(home.birth.4 = case_when(m15_4 %in% c("home","respondent's home", "other home") ~ 1,
                                            is.na(m15_4) ~ NA,
                                            TRUE ~ 0))
   IR <- IR %>%
-    dplyr::mutate(home.birth.5 = case_when(m15_5 %in% c("her home", "other home") ~ 1,
+    dplyr::mutate(home.birth.5 = case_when(m15_5 %in% c("home","respondent's home", "other home") ~ 1,
                                            is.na(m15_5) ~ NA,
                                            TRUE ~ 0))
   IR <- IR %>%
@@ -287,7 +302,7 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
   ## HOME.BIRTH (BR FILE) ----
   # Any birth was a home birth
   BR <- BR %>%
-    dplyr::mutate(home.birth = case_when(m15 %in% c("home", "parents' home", "her home", "other home") ~ 1,
+    dplyr::mutate(home.birth = case_when(m15 %in% c("respondent's home", "other home") ~ 1,
                                          is.na(m15) ~ NA,
                                          TRUE ~ 0))
 
@@ -396,16 +411,18 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
     mutate(rota.none = case_when(is.na(rotasum) ~ NA, rotasum == 0 ~ 1, TRUE ~ 0))
 
   ### YELLOW FEVER ----
-  KR <- KR %>%
-    mutate(yellowfever1 = case_when(syf %in% c("vaccination date on card", "vaccination marked on card", "reported by mother") ~ 1, syf %in% c("no", "don't know")  ~ 0  )) %>%
-    mutate(yellowfever.all = case_when(is.na(yellowfever1) ~ NA, yellowfever1 == 1 ~ 1, TRUE ~ 0)) %>%
-    mutate(yellowfever.none = case_when(is.na(yellowfever1) ~ NA, yellowfever1 == 0 ~ 1, TRUE ~ 0))
+  # SM: not required for Tanzania
+  # KR <- KR %>%
+  #   mutate(yellowfever1 = case_when(syf %in% c("vaccination date on card", "vaccination marked on card", "reported by mother") ~ 1, syf %in% c("no", "don't know")  ~ 0  )) %>%
+  #   mutate(yellowfever.all = case_when(is.na(yellowfever1) ~ NA, yellowfever1 == 1 ~ 1, TRUE ~ 0)) %>%
+  #   mutate(yellowfever.none = case_when(is.na(yellowfever1) ~ NA, yellowfever1 == 0 ~ 1, TRUE ~ 0))
 
   ### MENINGITIS ----
-  KR <- KR %>%
-    mutate(meningitis1 = case_when(smg %in% c("vaccination date on card", "vaccination marked on card", "reported by mother") ~ 1, smg %in% c("no", "don't know")  ~ 0  )) %>%
-    mutate(meningitis.all = case_when(is.na(meningitis1) ~ NA, meningitis1 == 1 ~ 1, TRUE ~ 0)) %>%
-    mutate(meningitis.none = case_when(is.na(meningitis1) ~ NA, meningitis1 == 0 ~ 1, TRUE ~ 0))
+  # SM: not required for Tanzania
+  # KR <- KR %>%
+  #   mutate(meningitis1 = case_when(smg %in% c("vaccination date on card", "vaccination marked on card", "reported by mother") ~ 1, smg %in% c("no", "don't know")  ~ 0  )) %>%
+  #   mutate(meningitis.all = case_when(is.na(meningitis1) ~ NA, meningitis1 == 1 ~ 1, TRUE ~ 0)) %>%
+  #   mutate(meningitis.none = case_when(is.na(meningitis1) ~ NA, meningitis1 == 0 ~ 1, TRUE ~ 0))
 
   ## SUMMARY VAX MEASURES ----
 
@@ -433,6 +450,10 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
 
   ### FULL.VAX.SCHEDULE.12M ----
   # Fully vaccinated 12 months (children age 12 months+)
+  # SM: I think the modification below is ok, but check with Jess
+  # Vitamin A and TT included in schedule. VitA should have 1 dose before 1 year
+  # But VitA administrataion only collected for most recent receipt.
+  # and TT has no specific age-based schedule
   KR <- KR %>%
     mutate(
       full.vax.schedule.12m = case_when(
@@ -444,9 +465,9 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
              pentavalent.all == 1 &
              polio.all == 1 &
              pneumo.all == 1 &
-             measles1 == 1 &
-             yellowfever.all == 1 &
-             meningitis.all == 1) ~ 1,
+             measles1 == 1) ~ 1,
+             # yellowfever.all == 1 &
+             # meningitis.all == 1) ~ 1,
         b19 >= 12 & b19 <= 24 ~ 0
       )
     )
@@ -462,22 +483,23 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
              pentavalent.all == 0 |
              polio.all == 0 |
              pneumo.all == 0 |
-             measles1 == 0 |
-             yellowfever.all == 0 |
-             meningitis.all == 0) ~ 1,
+             measles1 == 0 ) ~ 1,
+             # yellowfever.all == 0 |
+             # meningitis.all == 0) ~ 1,
         b19 >= 12 & b19 <= 24 ~ 0
       )
     )
 
   ### FULL.VAX.SCHEDULE.24M ----
   # Fully vaccinated 24 months (second dose of measles)
+  # SM: removed meningitis and yellow fever for Tanzania
   KR <- KR %>%
     mutate(
       full.vax.schedule.24m = case_when(
         is.na(h1) ~ NA_real_,
         b19 < 24 | b19 > 36 ~ NA_real_,
         b19 >= 24 &  bcg.all == 1 & hepb.all == 1 & pentavalent.all == 1 & polio.all == 1 &
-          pneumo.all == 1 & measles.all == 1 & yellowfever.all == 1 & meningitis.all == 1 ~ 1,
+          pneumo.all == 1 & measles.all == 1  ~ 1,
         b19 >= 24 & b19 <= 36 ~ 0))
 
   KR <- KR %>%
@@ -486,7 +508,7 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
         is.na(h1) ~ NA_real_,
         b19 < 24 | b19 > 36 ~ NA_real_,
         b19 >= 24 &  bcg.all == 0 | hepb.all == 0 | pentavalent.all == 0 | polio.all == 0 |
-          pneumo.all == 0 | measles.all == 0 | yellowfever.all == 0 | meningitis.all == 0 ~ 1,
+          pneumo.all == 0 | measles.all == 0 ~ 1,
         b19 >= 24 & b19 <= 36 ~ 0))
 
   ### ZERO.DOSE.4VAX.12M ----
@@ -744,6 +766,7 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
 
   ## COMP.FEED ----
   # Child given complementary feeding (dependency for breastfed2.noexcl)
+  # SM: suggest removing this section that measures exclusive breastfeeding <2 years old
   IR <- IR %>%
     mutate(comp.feed = case_when(IR$v409 == "yes" | IR$v410 == "yes" | IR$v411 == "yes" | IR$v411 == "yes" |
                                    IR$v412c == "yes" | IR$v413 == "yes" | IR$v414e == "yes"  | IR$v414f == "yes" |
@@ -891,36 +914,46 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
 
   ## NO.FEVER.COUGH.CARE.YN ----
   # Health seeking for illness: treatment for fever/cough
-  kr_var <- KR %>%
-    dplyr::select(survey, caseid, starts_with("h32")) %>%
-    reshape2::melt(id.vars=c("survey", "caseid")) %>%
-    dplyr::mutate(care = case_when((variable == "h32a" & value == "yes") ~ 1,
-                                   (variable == "h32b" & value == "yes") ~ 1,
-                                   (variable == "h32c" & value == "yes") ~ 1,
-                                   (variable == "h32d" & value == "yes") ~ 1,
-                                   (variable == "h32e" & value == "yes") ~ 1,
-                                   (variable == "h32f" & value == "yes") ~ 1,
-                                   (variable == "h32g" & value == "yes") ~ 1,
-                                   (variable == "h32h" & value == "yes") ~ 1,
-                                   (variable == "h32i" & value == "yes") ~ 1,
-                                   (variable == "h32j" & value == "yes") ~ 1,
-                                   (variable == "h32k" & value == "yes") ~ 1,
-                                   (variable == "h32l" & value == "yes") ~ 1,
-                                   (variable == "h32m" & value == "yes") ~ 1,
-                                   (variable == "h32n" & value == "yes") ~ 1,
-                                   (variable == "h32o" & value == "yes") ~ 1,
-                                   (variable == "h32p" & value == "yes") ~ 1,
-                                   (variable == "h32q" & value == "yes") ~ 1,
-                                   (variable == "h32nb" & value == "yes") ~ 1,
-                                   (variable == "h32nc" & value == "yes") ~ 1,
-                                   is.na(value) ~ NA,
-                                   TRUE ~ 0)) %>%
-    dplyr::group_by(survey, caseid) %>%
-    dplyr::mutate(care.cnt = ifelse(all(is.na(care)), NA, sum(care, na.rm=TRUE)),
-                  no.fever.cough.care.yn = ifelse(care.cnt == 0, 1, 0)) %>%
-    dplyr::select(survey, caseid, care.cnt, no.fever.cough.care.yn) %>%
-    distinct()
+  # SM: Do we need care.cnt? If not, we can simplify the code below
+  # kr_var <- KR %>%
+  #   dplyr::select(survey, caseid, starts_with("h32")) %>%
+  #   reshape2::melt(id.vars=c("survey", "caseid")) %>%
+  #   dplyr::mutate(care = case_when((variable == "h32a" & value == "yes") ~ 1,
+  #                                  (variable == "h32b" & value == "yes") ~ 1,
+  #                                  (variable == "h32c" & value == "yes") ~ 1,
+  #                                  (variable == "h32d" & value == "yes") ~ 1,
+  #                                  (variable == "h32e" & value == "yes") ~ 1,
+  #                                  (variable == "h32f" & value == "yes") ~ 1,
+  #                                  (variable == "h32g" & value == "yes") ~ 1,
+  #                                  (variable == "h32h" & value == "yes") ~ 1,
+  #                                  (variable == "h32i" & value == "yes") ~ 1,
+  #                                  (variable == "h32j" & value == "yes") ~ 1,
+  #                                  (variable == "h32k" & value == "yes") ~ 1,
+  #                                  (variable == "h32l" & value == "yes") ~ 1,
+  #                                  (variable == "h32m" & value == "yes") ~ 1,
+  #                                  (variable == "h32n" & value == "yes") ~ 1,
+  #                                  (variable == "h32o" & value == "yes") ~ 1,
+  #                                  (variable == "h32p" & value == "yes") ~ 1,
+  #                                  (variable == "h32q" & value == "yes") ~ 1,
+  #                                  (variable == "h32nb" & value == "yes") ~ 1,
+  #                                  (variable == "h32nc" & value == "yes") ~ 1,
+  #                                  is.na(value) ~ NA,
+  #                                  TRUE ~ 0)) %>%
+  #   dplyr::group_by(survey, caseid) %>%
+  #   dplyr::mutate(care.cnt = ifelse(all(is.na(care)), NA, sum(care, na.rm=TRUE)),
+  #                 no.fever.cough.care.yn = ifelse(care.cnt == 0, 1, 0)) %>%
+  #   dplyr::select(survey, caseid, care.cnt, no.fever.cough.care.yn) %>%
+  #   distinct()
 
+  # SM: simplified code
+  KR <- KR %>%
+    mutate(
+      no.fever.cough.care.yn = case_when(
+        h32y == "yes: no treatment" ~ 1,
+        h32y == "no: received treatment" ~ 0,
+        TRUE ~ NA_real_
+      )
+    )
 
   ######################################################################
   # 12 | MATERNAL HEALTH ----
@@ -973,33 +1006,63 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
 
   ## NO_SKILLED_ASSIST_BIN ----
   # Who assisted delivery
+  # SM: Modified categories based on TZ survey options
   BR <- BR %>%
     mutate(across(m3a:m3n, ~ ifelse(.x == "yes", 1,
                                     ifelse(.x == "no", 0, NA_integer_))))
+  # BR <- BR %>%
+  #   mutate(
+  #     who.assisted.del = case_when(
+  #       m3a == "yes" ~ "Doctor",
+  #       m3b == "yes" ~ "Nurse/midwife",
+  #       m3c == "yes" ~ "Auxilary midwife",
+  #       m3d == "yes" | m3e == "yes" | m3f == "yes" ~ "Community health extension worker",
+  #       m3g == "yes" ~ "Traditional birth attendant",
+  #       m3h == "yes" | m3i == "yes" | m3j == "yes" | m3k == "yes" | m3l == "yes" | m3m == "yes" ~ "Relative/other",
+  #       m3n == "yes" ~ "No one",
+  #       m3a == NA ~ "NA - last birth >5 yrs",
+  #       is.na(m3a) ~ "NA - last birth >5 yrs",
+  #       TRUE ~ NA_character_))
+
+  # BR <- BR %>%
+  #   mutate(
+  #     no_skilled_assist_bin = case_when(
+  #       who.assisted.del %in% c(
+  #         "Auxilary midwife",
+  #         "Nurse/midwife",
+  #         "Doctor",
+  #         "Community health extension worker"
+  #       ) ~ 0,
+  #       is.na(who.assisted.del) ~ NA_real_,
+  #       TRUE ~ 1
+  #     )
+  #   )
+
   BR <- BR %>%
     mutate(
       who.assisted.del = case_when(
-        m3a == "yes" ~ "Doctor",
-        m3b == "yes" ~ "Nurse/midwife",
-        m3c == "yes" ~ "Auxilary midwife",
-        m3d == "yes" | m3e == "yes" | m3f == "yes" ~ "Community health extension worker",
-        m3g == "yes" ~ "Traditional birth attendant",
-        m3h == "yes" | m3i == "yes" | m3j == "yes" | m3k == "yes" | m3l == "yes" | m3m == "yes" ~ "Relative/other",
+        m3a == "yes" ~ "Doctor/AMO",
+        m3b == "yes" | m3c == "yes" ~ "Clinical officer/assistant clinical officer",
+        m3d == "yes" | m3e == "yes" | m3f == "yes" ~ "Nurse/midwife/assistant nurse/MCH aide",
+        m3g == "yes" ~  "Traditional birth attendant",
+        m3h == "yes" ~ "Community health worker",
+        m3i == "yes" | m3k == "yes" ~ "Relative/neighbor/other",
         m3n == "yes" ~ "No one",
-        m3a == NA ~ "NA - last birth >5 yrs",
-        is.na(m3a) ~ "NA - last birth >5 yrs",
-        TRUE ~ NA_character_))
+        is.na(m3a) ~ "NA - last birth >3 yrs",
+        TRUE ~ NA_character_
+      )
+    )
 
   BR <- BR %>%
     mutate(
       no_skilled_assist_bin = case_when(
         who.assisted.del %in% c(
-          "Auxilary midwife",
-          "Nurse/midwife",
-          "Doctor",
-          "Community health extension worker"
+          "Doctor/AMO",
+          "Clinical officer/assistant clinical officer",
+          "Nurse/midwife/assistant nurse/MCH aide"
         ) ~ 0,
         is.na(who.assisted.del) ~ NA_real_,
+        who.assisted.del == "NA - last birth >3 yrs" ~ NA_real_,
         TRUE ~ 1
       )
     )
@@ -1094,10 +1157,10 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
                      pneumo.none.cnt = ifelse(all(is.na(pneumo.none)), NA, sum(pneumo.none, na.rm=TRUE)),
                      rota.all.cnt = ifelse(all(is.na(rota.all)), NA, sum(rota.all, na.rm=TRUE)),
                      rota.none.cnt = ifelse(all(is.na(rota.none)), NA, sum(rota.none, na.rm=TRUE)),
-                     yellowfever.all.cnt = ifelse(all(is.na(yellowfever.all)), NA, sum(yellowfever.all, na.rm=TRUE)),
-                     yellowfever.none.cnt = ifelse(all(is.na(yellowfever.none)), NA, sum(yellowfever.none, na.rm=TRUE)),
-                     meningitis.all.cnt = ifelse(all(is.na(meningitis.all)), NA, sum(meningitis.all, na.rm=TRUE)),
-                     meningitis.none.cnt = ifelse(all(is.na(meningitis.none)), NA, sum(meningitis.none, na.rm=TRUE)),
+                     # yellowfever.all.cnt = ifelse(all(is.na(yellowfever.all)), NA, sum(yellowfever.all, na.rm=TRUE)),
+                     # yellowfever.none.cnt = ifelse(all(is.na(yellowfever.none)), NA, sum(yellowfever.none, na.rm=TRUE)),
+                     # meningitis.all.cnt = ifelse(all(is.na(meningitis.all)), NA, sum(meningitis.all, na.rm=TRUE)),
+                     # meningitis.none.cnt = ifelse(all(is.na(meningitis.none)), NA, sum(meningitis.none, na.rm=TRUE)),
                      pentavalent.all.cnt = ifelse(all(is.na(pentavalent.all)), NA, sum(pentavalent.all, na.rm=TRUE)),
                      pentavalent.none.cnt = ifelse(all(is.na(pentavalent.none)), NA, sum(pentavalent.none, na.rm=TRUE)),
                      pos.basic.antigen.full.12m.cnt = ifelse(all(is.na(basic.antigen.full.12m)), NA, sum(basic.antigen.full.12m, na.rm=TRUE)),
@@ -1139,10 +1202,10 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
                   pneumo.none.yn = ifelse(pneumo.none.cnt > 0, 1, 0),
                   pos.rota.all.yn = ifelse(rota.all.cnt > 0, 1, 0),
                   rota.none.yn = ifelse(rota.none.cnt > 0, 1, 0),
-                  pos.yellowfever.all.yn = ifelse(yellowfever.all.cnt > 0, 1, 0),
-                  yellowfever.none.yn = ifelse(yellowfever.none.cnt > 0, 1, 0),
-                  pos.meningitis.all.yn = ifelse(meningitis.all.cnt > 0, 1, 0),
-                  meningitis.none.yn = ifelse(meningitis.none.cnt > 0, 1, 0),
+                  # pos.yellowfever.all.yn = ifelse(yellowfever.all.cnt > 0, 1, 0),
+                  # yellowfever.none.yn = ifelse(yellowfever.none.cnt > 0, 1, 0),
+                  # pos.meningitis.all.yn = ifelse(meningitis.all.cnt > 0, 1, 0),
+                  # meningitis.none.yn = ifelse(meningitis.none.cnt > 0, 1, 0),
                   pos.pentavalent.all.yn = ifelse(pentavalent.all.cnt > 0, 1, 0),
                   pentavalent.none.yn = ifelse(pentavalent.none.cnt > 0, 1, 0),
                   pos.basic.antigen.full.12m.yn = ifelse(pos.basic.antigen.full.12m.cnt > 0, 1, 0),
@@ -1155,11 +1218,15 @@ gen_outcome_variables_dhs <- function(IR=NULL, KR=NULL, BR=NULL, dhs = 8) {
                   no.breastfeed.yn, no.breastfeed2.yn, ovrwgt.yn, undwgt.yn, stunt.cat2.yn, waste.cat2.yn, meas.full.yn, dpt.full.yn, polio.full.yn, zerodose.yn, fever.yn, cough.yn, diff.breath.yn, chest.prob.yn,
                   zero.dose.operational.yn, zero.dose.4vax.12m.yn, not.full.vax.schedule.24m.yn, not.full.vax.schedule.12m.yn,
                   pos.full.vax.schedule.24m.yn, pos.full.vax.schedule.12m.yn, pos.measles.all.yn, pos.polio.all.yn, pos.dpt.all.yn,
-                  pos.bcg.all.yn, pos.hepb.all.yn, pos.pneumo.all.yn, pos.rota.all.yn, pos.yellowfever.all.yn, pos.meningitis.all.yn,
+                  pos.bcg.all.yn, pos.hepb.all.yn, pos.pneumo.all.yn, pos.rota.all.yn,
+                  # pos.yellowfever.all.yn, pos.meningitis.all.yn,
                   no.mad.yn, no.ebf.yn, measles.none.yn, polio.none.yn, dpt.none.yn, bcg.none.yn, hepb.none.yn, pneumo.none.yn,
-                  rota.none.yn, yellowfever.none.yn, meningitis.none.yn, pos.basic.antigen.full.12m.yn, basic.antigen.full.none.12m.yn,
-                  pentavalent.none.yn, pos.pentavalent.all.yn, ari.yn, bcg.all.cnt,zero.dose.4vax.12m.cnt, no.ebf.cnt) %>%
-    base::merge(kr_var, by=c("survey", "caseid"), all.x=TRUE)
+                  rota.none.yn,
+                  # yellowfever.none.yn, meningitis.none.yn,
+                  pos.basic.antigen.full.12m.yn, basic.antigen.full.none.12m.yn,
+                  pentavalent.none.yn, pos.pentavalent.all.yn, ari.yn, bcg.all.cnt,zero.dose.4vax.12m.cnt, no.ebf.cnt)
+    # %>%
+    # base::merge(kr_var, by=c("survey", "caseid"), all.x=TRUE)
 
   ## JOIN TOGETHER ----
   outcomes <- ir.out %>%

@@ -28,32 +28,26 @@ if (length(list.files(path = data_path, pattern = "\\.rds$", full.names = TRUE))
 # COMMENT THIS CODE ACCORDINGLY IF USING DHS OR A DIFFERENT SURVEY
 if (file.exists(paste0(data_path, "IR.rds"))) {
   IR <- readRDS(file = paste0(data_path, "IR.rds"))
-  IR <- IR %>% dplyr::filter(v024 %in% c("south west", "south south" , "south east"))
   message("IR file imported.")}
 
 if (file.exists(paste0(data_path, "BR.rds"))) {
   BR <- readRDS(file = paste0(data_path, "BR.rds"))
-  BR <- BR %>% dplyr::filter(v024 %in% c("south west", "south south" , "south east"))
   message("BR file imported.")}
 
 if (file.exists(paste0(data_path, "KR.rds"))) {
   KR <- readRDS(file = paste0(data_path, "KR.rds"))
-  KR <- KR %>% dplyr::filter(v024 %in% c("south west", "south south" , "south east"))
   message("KR file imported.")}
 
 if (file.exists(paste0(data_path, "HH.rds"))) {
   HH <- readRDS(file = paste0(data_path, "HH.rds"))
-  HH <- HH %>% dplyr::filter(hv024 %in% c("south west", "south south" , "south east"))
   message("HH file imported.")}
 
 if (file.exists(paste0(data_path, "MR.rds"))) {
   MR <- readRDS(file = paste0(data_path, "MR.rds"))
-  MR <- MR %>% dplyr::filter(mv024 %in% c("south west", "south south" , "south east"))
   message("MR file imported.")}
 
 if (file.exists(paste0(data_path, "PR.rds"))) {
   PR <- readRDS(file = paste0(data_path, "PR.rds"))
-  PR <- PR %>% dplyr::filter(hv024 %in% c("south west", "south south" , "south east"))
   message("PR file imported.")}
 
 
@@ -190,7 +184,8 @@ if (create_new_pathways_workbook==TRUE){
     denominator = NA
   ) %>%
     base::merge(dd_vulnerabilities, by=c("vulnerability_variable"), by.y=c("metric_id"), all.x=TRUE) %>%
-    dplyr::select(vulnerability_variable, short_name, detailed_description, domain, domain_category, univariate_include, eda_include, pca_strata, pca_include, lca_strata, lca_include, profile_strata, profile_include, typing_tool_strata, typing_tool_include, notes, denominator) %>%
+    dplyr::select(vulnerability_variable, short_name, detailed_description, domain, domain_category, univariate_include, eda_include, pca_strata, pca_include, lca_strata, lca_include, profile_strata, profile_include, typing_tool_strata, typing_tool_include, notes, denominator,
+                  Woman.and.her.past.experiences, Health.and.mental.models, Natural.and.human.systems, Household.relationships, Household.economics.and.living.conditions, Social.support) %>%
     arrange(vulnerability_variable)
 
 
